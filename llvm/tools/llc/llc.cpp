@@ -52,6 +52,7 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include <iostream>
 #include <memory>
 using namespace llvm;
 
@@ -391,6 +392,7 @@ static bool addPass(PassManagerBase &PM, const char *argv0,
 
 static int compileModule(char **argv, LLVMContext &Context) {
   // Load the module to be compiled...
+  std::cout << "I'm here!\n";
   SMDiagnostic Err;
   std::unique_ptr<Module> M;
   std::unique_ptr<MIRParser> MIR;
