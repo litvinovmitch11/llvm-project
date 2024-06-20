@@ -47,6 +47,7 @@
 #include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/CFGuard.h"
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -398,6 +399,20 @@ INITIALIZE_PASS_END(X86ExecutionDomainFix, "x86-execution-domain-fix",
   "X86 Execution Domain Fix", false, false)
 
 TargetPassConfig *X86TargetMachine::createPassConfig(PassManagerBase &PM) {
+  return new X86PassConfig(*this, PM);
+}
+
+TargetPassConfig *X86TargetMachine::createCustomPassConfig(PassManagerBase &PM, const std::string &passes) {
+  if (passes.empty())
+      return new X86PassConfig(*this, PM);
+
+  SmallVector<StringRef, 8> PassNames;
+  StringRef(passes).split(PassNames, ',', -1, false);
+  for (auto PassName : PassNames) {
+    std::cout << PassName.str() << "\n";
+    PassNames.push_back(PassName);
+  }
+
   return new X86PassConfig(*this, PM);
 }
 

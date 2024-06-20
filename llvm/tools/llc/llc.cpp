@@ -162,6 +162,11 @@ static cl::opt<std::string> RemarksFormat(
     cl::desc("The format used for serializing remarks (default: YAML)"),
     cl::value_desc("format"), cl::init("yaml"));
 
+static cl::opt<std::string>X86MachinePass(
+    "x86-machine-pass-order",
+    cl::desc("Enable custom machine pass order for x86"),
+    cl::Hidden);
+
 namespace {
 static ManagedStatic<std::vector<std::string>> RunPassNames;
 
@@ -392,7 +397,6 @@ static bool addPass(PassManagerBase &PM, const char *argv0,
 
 static int compileModule(char **argv, LLVMContext &Context) {
   // Load the module to be compiled...
-  std::cout << "I'm here!\n";
   SMDiagnostic Err;
   std::unique_ptr<Module> M;
   std::unique_ptr<MIRParser> MIR;
@@ -552,38 +556,48 @@ static int compileModule(char **argv, LLVMContext &Context) {
 
     // Construct a custom pass pipeline that starts after instruction
     // selection.
-    if (!RunPassNames->empty()) {
-      if (!MIR) {
-        WithColor::warning(errs(), argv[0])
-            << "run-pass is for .mir file only.\n";
-        return 1;
+    if (!X86MachinePass.empty()) {
+      TargetPassConfig *TPC = LLVMTM.createCustomPassConfig(PM, X86MachinePass);
+      if (!TPC) {
+        std::cout << "Something wrong...\n";
+      } else {
+        PM.add(TPC);
+        std::cout << "All ok!\n";
       }
-      TargetPassConfig &TPC = *LLVMTM.createPassConfig(PM);
-      if (TPC.hasLimitedCodeGenPipeline()) {
-        WithColor::warning(errs(), argv[0])
-            << "run-pass cannot be used with "
-            << TPC.getLimitedCodeGenPipelineReason(" and ") << ".\n";
-        return 1;
-      }
-
-      TPC.setDisableVerify(NoVerify);
-      PM.add(&TPC);
-      PM.add(MMIWP);
-      TPC.printAndVerify("");
-      for (const std::string &RunPassName : *RunPassNames) {
-        if (addPass(PM, argv0, RunPassName, TPC))
+    } else {
+      if (!RunPassNames->empty()) {
+        if (!MIR) {
+          WithColor::warning(errs(), argv[0])
+              << "run-pass is for .mir file only.\n";
           return 1;
+        }
+        TargetPassConfig &TPC = *LLVMTM.createPassConfig(PM);
+        if (TPC.hasLimitedCodeGenPipeline()) {
+          WithColor::warning(errs(), argv[0])
+              << "run-pass cannot be used with "
+              << TPC.getLimitedCodeGenPipelineReason(" and ") << ".\n";
+          return 1;
+        }
+
+        TPC.setDisableVerify(NoVerify);
+        PM.add(&TPC);
+        PM.add(MMIWP);
+        TPC.printAndVerify("");
+        for (const std::string &RunPassName : *RunPassNames) {
+          if (addPass(PM, argv0, RunPassName, TPC))
+            return 1;
+        }
+        TPC.setInitialized();
+        PM.add(createPrintMIRPass(*OS));
+        PM.add(createFreeMachineFunctionPass());
+      } else if (Target->addPassesToEmitFile(PM, *OS,
+                                             DwoOut ? &DwoOut->os() : nullptr,
+                                             FileType, NoVerify, MMIWP)) {
+        WithColor::warning(errs(), argv[0])
+            << "target does not support generation of this"
+            << " file type!\n";
+        return 1;
       }
-      TPC.setInitialized();
-      PM.add(createPrintMIRPass(*OS));
-      PM.add(createFreeMachineFunctionPass());
-    } else if (Target->addPassesToEmitFile(PM, *OS,
-                                           DwoOut ? &DwoOut->os() : nullptr,
-                                           FileType, NoVerify, MMIWP)) {
-      WithColor::warning(errs(), argv[0])
-          << "target does not support generation of this"
-          << " file type!\n";
-      return 1;
     }
 
     if (MIR) {

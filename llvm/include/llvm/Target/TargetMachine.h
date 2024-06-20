@@ -331,6 +331,10 @@ public:
   /// for generating a pipeline of CodeGen passes.
   virtual TargetPassConfig *createPassConfig(PassManagerBase &PM);
 
+  /// Create a pass configuration object to be used by addPassToEmitX methods
+  /// for generating a custom pipeline of CodeGen passes.
+  virtual TargetPassConfig *createCustomPassConfig(PassManagerBase &PM, const std::string &msg);
+
   /// Add passes to the specified pass manager to get the specified file
   /// emitted.  Typically this will involve several steps of code generation.
   /// \p MMIWP is an optional parameter that, if set to non-nullptr,

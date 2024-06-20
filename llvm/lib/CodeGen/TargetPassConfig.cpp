@@ -449,6 +449,10 @@ TargetPassConfig *LLVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new TargetPassConfig(*this, PM);
 }
 
+TargetPassConfig *LLVMTargetMachine::createCustomPassConfig(PassManagerBase &PM, const std::string &msg) {
+  return new TargetPassConfig(*this, PM);
+}
+
 TargetPassConfig::TargetPassConfig()
   : ImmutablePass(ID) {
   report_fatal_error("Trying to construct TargetPassConfig without a target "

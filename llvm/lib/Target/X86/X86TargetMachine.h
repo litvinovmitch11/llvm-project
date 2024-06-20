@@ -49,6 +49,8 @@ public:
   // Set up the pass pipeline.
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 
+  TargetPassConfig *createCustomPassConfig(PassManagerBase &PM, const std::string &msg) override;
+
   TargetLoweringObjectFile *getObjFileLowering() const override {
     return TLOF.get();
   }
